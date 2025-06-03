@@ -1,0 +1,41 @@
+name: SmartDeploy CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: |
+          python -m unittest discover tests
+
+      - name: Notify Slack (Success)
+        if: success()
+        run: |
+          chmod +x notify_slack.sh
+          ./notify_slack.sh "✅ SmartDeploy: Build and Tests Passed"
+
+      - name: Notify Slack (Failure)
+        if: failure()
+        run: |
+          chmod +x notify_slack.sh
+          ./notify_slack.sh "❌ SmartDeploy: Build or Tests Failed"
