@@ -1,41 +1,41 @@
-name: SmartDeploy CI/CD
+name: SmartDeploy CI Pipeline
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [ "main" ]
 
 jobs:
-  build-test-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run unit tests
+      - name: Run tests
         run: |
           python -m unittest discover tests
 
-      - name: Notify Slack (Success)
+      - name: Notify Slack on success
         if: success()
         run: |
-          chmod +x notify_slack.sh
-          ./notify_slack.sh "✅ SmartDeploy: Build and Tests Passed"
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"✅ CI Pipeline succeeded on SmartDeploy!"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Notify Slack (Failure)
+      - name: Notify Slack on failure
         if: failure()
         run: |
-          chmod +x notify_slack.sh
-          ./notify_slack.sh "❌ SmartDeploy: Build or Tests Failed"
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"❌ CI Pipeline failed on SmartDeploy!"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
