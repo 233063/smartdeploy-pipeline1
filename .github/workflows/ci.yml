@@ -1,32 +1,44 @@
-name: SmartDeploy CI Pipeline
+name: CI/CD with Docker
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
-  build-and-test:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout Code
       uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.9'
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-
-    - name: Run tests
-      run: python -m unittest discover tests
-
-    - name: Send Slack Notification
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    - name: Install Dependencies
       run: |
-        chmod +x notify_slack.sh
-        ./notify_slack.sh "✅ CI pipeline passed successfully on SmartDeploy!"
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
+    - name: Run Unit Tests
+      run: |
+        pytest tests/ || exit 1
+
+    - name: Build Docker Image
+      run: docker build -t my-app .
+
+    - name: Run Docker Container
+      run: docker run -d -p 5000:5000 --name my-container my-app
+
+    - name: Notify Slack (Success)
+      if: success()
+      run: |
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"✅ Docker build and run succeeded!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify Slack (Failure)
+      if: failure()
+      run: |
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Build failed. Please check the logs."}' ${{ secrets.SLACK_WEBHOOK_URL }}
